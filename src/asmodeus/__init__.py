@@ -20,7 +20,7 @@ def main() -> None:
 
         history.append({"role": "user", "content": user})
         stream = ollama.chat(
-            model=MODEL, messages=history, think=think, stream=True
+            model=MODEL, messages=history, think=think, stream=True,
             options={"num_ctx": 8192}
         )
 
