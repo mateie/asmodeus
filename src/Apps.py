@@ -1,17 +1,26 @@
 import os
+from pathlib import Path
 
 from Util import Util
 
 
 class Apps:
     def __init__(self, util: Util):
-        self.apps = {
-            "notepad": "notepad.exe",
-            "calculator": "calc.exe",
-            "spotify": "spotify:"
-        }
+        self.apps = self.scan_start_menu()
 
         self.tools = {f.__name__: f for f in (util.get_time, self.open_app)}
+        
+        
+    def scan_start_menu(self) -> dict[str, str]:
+        roots = [
+            Path(os.environ["PROGRAMDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
+            Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+        ]
+        found: dict[str, str] = {}
+        for root in roots:
+            for lnk in root.rglob("*.lnk"):
+                found[lnk.stem.lower()] = str(lnk)
+        return found
         
     
     def open_app(self, app_name: str) -> str:
