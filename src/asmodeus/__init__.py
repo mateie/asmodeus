@@ -8,14 +8,19 @@ history = [{
 think = False
 
 def main() -> None:
+    global think
     while True:
-        user = input("you > ")
+        user = input("You > ")
+
+        if user.lower().strip() == "":
+            continue
+
         if user.lower() in ("exit", "quit"):
             break
         
         if user.lower() == "/think":
             think = not think
-            print(f"[thinking {'on' if think else 'off'}]\n")
+            print(f"Asmo > I am {'' if think else 'not '}thinking\n")
             continue
 
         history.append({"role": "user", "content": user})
@@ -25,7 +30,7 @@ def main() -> None:
         )
 
         text = ""
-        print("asmo > ", end="", flush=True)
+        print("Asmo > ", end="", flush=True)
         for chunk in stream:
             piece = chunk["message"]["content"]
             text += piece
