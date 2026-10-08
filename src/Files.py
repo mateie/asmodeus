@@ -7,6 +7,7 @@ class Files:
             "workspace": home / "AsmoFiles",
             "documents": home / "Documents",
             "desktop": home / "Desktop",
+            "notes": home / "Notes"
         }
         
         for p in self.folders.values():
@@ -30,7 +31,7 @@ class Files:
         """List the files in a folder.
         
         Args:
-            folder: Must be exactly one of: workspacce, documents,  desktop.
+            folder: Must be exactly one of: workspacce, documents, desktop, notes.
             subfolder: A subfolder within the specified folder. Defaults to the root of the folder.
         """
         
@@ -44,7 +45,7 @@ class Files:
         """Read a text file
         
         Args:
-            folder: Must be exactly one of: workspacce, documents, desktop.
+            folder: Must be exactly one of: workspacce, documents, desktop, notes.
             filename: The name of the file to read, like "notes.txt" or "subfolder/notes.txt".
         """
         
@@ -57,7 +58,7 @@ class Files:
         """Create a new text file.
 
         Args:
-            folder: Where to save it. Must be exactly one of: workspace, documents, desktop.
+            folder: Where to save it. Must be exactly one of: workspacce, documents, desktop, notes.
             filename: Name of the file, like notes.txt. Add .txt if no extension was given.
             content: The text to write into the file.
         """
