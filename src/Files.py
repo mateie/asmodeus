@@ -68,7 +68,7 @@ class Files:
                 filename += ".txt"
             target = self.safe(folder, filename)
             if target.exists():
-                return f"{filename} already exists. Ask the user whether to overwrite it."
+                return f"{filename} already exists. Ask the user for a different filename."
             
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
