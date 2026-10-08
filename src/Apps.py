@@ -29,7 +29,14 @@ class Apps:
     def open_app(self, app_name: str) -> str:
         """Opens an application by its name."""
     
-        exe = self.apps.get(app_name.lower())
+        name = app_name.lower().strip()
+        exe = self.apps.get(name)
+        
+        if not exe:
+            matches = [n for n in self.apps if name in n]
+            if matches:
+                exe = self.apps[min(matches, key=len)]
+        
         if not exe:
             return f"App '{app_name}' not found."
         
