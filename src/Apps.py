@@ -24,6 +24,8 @@ class Apps:
         
     
     def open_app(self, app_name: str) -> str:
+        """Opens an application by its name."""
+    
         exe = self.apps.get(app_name.lower())
         if not exe:
             return f"App '{app_name}' not found."

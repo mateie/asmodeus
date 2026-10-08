@@ -1,28 +1,35 @@
 import ollama
 from typing import Any
 
+from Files import Files
 from Util import Util
 from Apps import Apps
+from Web import Web
 
 
 MODEL = "qwen3:8b"
+CONTENT = "You are Asmodeus (Asmo for short), a concise, capable personal assistant running on the user's Windows PC. Use your tools to take actions. For current events, prices, or anything you're unsure about, search the web instead of guessing."
 
 class Brain:
     def __init__(self):
         self.history = [{
             "role": "system",
-            "content": "You are Asmodeus (Asmo for short), a concise, capable personal assistant running on the user's PC."
+            "content": CONTENT
         }]
         self.think = False
 
         self.util = Util()
         self.apps = Apps(self.util)
+        self.files = Files()
+        self.web = Web()
+        
+        self.tools: dict[str, Any] = {**self.apps.tools, **self.files.tools, **self.web.tools}
 
 
     def turn(self):
         while True:
             stream = ollama.chat( # pyright: ignore[reportUnknownMemberType]
-                model=MODEL, messages=self.history, tools=list(self.apps.tools.values()),
+                model=MODEL, messages=self.history, tools=list(self.tools.values()),
                 think=self.think, stream=True, options={"num_ctx": 8192}
             )
             
@@ -68,11 +75,17 @@ class Brain:
 
             for call in calls:
                 name, args = call.function.name, call.function.arguments
+                # print(f"[tool] {name}({args})")
                 
                 try:
-                    result = self.apps.tools[name](**args)
+                    if name not in self.tools:
+                        result = f"Error: no tool named '{name}'. Available: {', '.join(self.tools)}" 
+                    else:
+                        result = self.tools[name](**args)
                 except Exception as e:
                     result = f"Error: {e}"
+                    
+                # print(f"[result] {result}")
                     
                 self.history.append({
                     "role": "tool", 
