@@ -19,6 +19,9 @@ class Apps:
         found: dict[str, str] = {}
         for root in roots:
             for lnk in root.rglob("*.lnk"):
+                if "uninstall" in lnk.stem.lower():
+                    continue
+                
                 found[lnk.stem.lower()] = str(lnk)
         return found
         
