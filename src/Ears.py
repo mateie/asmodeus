@@ -6,6 +6,7 @@ import numpy as np
 import sounddevice as sd # pyright: ignore[reportMissingTypeStubs]
 from numpy.typing import NDArray
 from openwakeword.model import Model # pyright: ignore[reportMissingTypeStubs]
+from openwakeword import utils # pyright: ignore[reportMissingTypeStubs]
 
 WAKE_MODEL = Path(__file__).parent / "models" / "hey_asmo.onnx"
 
@@ -23,6 +24,8 @@ def read_chunk(stream: Any) -> NDArray[np.int16]:
 
 class Ears:
     def __init__(self, debug: bool = False):
+        
+        utils.download_models(["no_pretrained_models"])
     
         self.debug = debug
         
