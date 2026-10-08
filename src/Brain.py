@@ -113,7 +113,7 @@ class Brain:
                        
 
     def run(self):
-        print("Asmo > I am listening. Say 'asmodeus' or 'asmo' to wake me. Ctrl+C to quit.\n")
+        print("Asmo > I am listening. Say 'hey asmodeus' or 'hey asmo' to wake me. Ctrl+C to quit.\n")
         
         while True:
             print("You > (waiting for wake word...)", end="\r", flush=True)
