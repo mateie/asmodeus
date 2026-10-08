@@ -1,5 +1,10 @@
 from Brain import Brain
 
 def main() -> None:
-    brain = Brain()
-    brain.run()
+    try:
+        Brain().run()
+    except KeyboardInterrupt:
+        print("\nAsmo -> Bye :<")
+        
+if __name__ == "__main__":
+    main()

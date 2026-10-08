@@ -1,6 +1,8 @@
 import ollama
+import re
 from typing import Any
 
+from Ears import Ears
 from Files import Files
 from Util import Util
 from Apps import Apps
@@ -8,29 +10,45 @@ from Web import Web
 
 
 MODEL = "qwen3:8b"
-CONTENT = "You are Asmodeus (Asmo for short), a concise, capable personal assistant running on the user's Windows PC. Use your tools to take actions. For current events, prices, or anything you're unsure about, search the web instead of guessing."
+SYSTEM_PROMPT = (
+    "You are Asmodeus (Asmo for short), a concise, capable personal assistant "
+    "running on the user's Windows PC. Use your tools to take actions instead of "
+    "asking the user for file paths. The user's folders are named aliases like "
+    "desktop, documents, and workspace. For current events, prices, or anything "
+    "you're unsure about, search the web instead of guessing."
+)
 
 class Brain:
     def __init__(self):
         self.history = [{
             "role": "system",
-            "content": CONTENT
+            "content": SYSTEM_PROMPT
         }]
         self.think = False
+        
+        self.ears = Ears()
 
         self.util = Util()
         self.apps = Apps(self.util)
         self.files = Files()
         self.web = Web()
         
-        self.tools: dict[str, Any] = {**self.apps.tools, **self.files.tools, **self.web.tools}
+        self.tools: dict[str, Any] = {
+            **self.apps.tools, 
+            **self.files.tools, 
+            **self.web.tools
+            }
 
 
     def turn(self):
         while True:
             stream = ollama.chat( # pyright: ignore[reportUnknownMemberType]
-                model=MODEL, messages=self.history, tools=list(self.tools.values()),
-                think=self.think, stream=True, options={"num_ctx": 8192}
+                model=MODEL, 
+                messages=self.history, 
+                tools=list(self.tools.values()),
+                think=self.think, 
+                stream=True, 
+                options={"num_ctx": 8192}
             )
             
             text: str = ""
@@ -95,17 +113,25 @@ class Brain:
                        
 
     def run(self):
+        print("Asmo > I am listening. Say 'asmodeus' or 'asmo' to wake me. Ctrl+C to quit.\n")
+        
         while True:
-            user = input("You > ")
+            print("You > (waiting for wake word...)", end="\r", flush=True)
+            
+            user = self.ears.listen()
 
-            if user.lower().strip() == "":
+            if not user:
                 continue
-
-            if user.lower() in ("exit", "quit"):
+            print(f"You > {user}")
+            
+            command = re.sub(r"[^a-z ]", "", user.lower()).strip()
+            
+            if command in ("shut down", "goodbye", "exit", "quit"):
+                print("Asmo > Bye :<\n")
                 break
             
-            if user.lower() == "/think":
-                self.think = not self.think
+            if command in ("thinking on", "thinking off"):
+                self.think = command == "thinking on"
                 print(f"Asmo > I am {'' if self.think else 'not '}thinking\n")
                 continue
             
