@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=2.5.3",
     "ollama>=0.6.3",
     "openwakeword>=0.6",
+    "piper-tts>=1.8.0",
     "sounddevice>=0.5.6",
 ]
 

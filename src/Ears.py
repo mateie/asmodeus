@@ -10,8 +10,9 @@ from openwakeword import utils # pyright: ignore[reportMissingTypeStubs]
 
 WAKE_MODEL = Path(__file__).parent / "models" / "hey_asmo.onnx"
 
-THRESHOLD = 0.5
+THRESHOLD = 0.35
 SILENCE_RMS = 500.0
+HITS = 2
 
 RATE = 16000
 CHUNK = 1280
@@ -24,35 +25,42 @@ def read_chunk(stream: Any) -> NDArray[np.int16]:
 
 class Ears:
     def __init__(self, debug: bool = False):
-        
-        utils.download_models(["no_pretrained_models"])
+        utils.download_models(["no_pretrained_models"]) # Needed
     
         self.debug = debug
         
         self.wake: Any = Model(wakeword_models=[str(WAKE_MODEL)], inference_framework="onnx")
         self.whisper = WhisperModel("small.en", device="cpu", compute_type="int8")
         
-    def listen(self):
-        """Block until the wake word is heard, record until you stop talking, return the transcript."""
-        
+    def wait_for_wake(self):
+        """Block until the wake word is heard."""
+ 
         self.wake.reset()
-        frames: list[NDArray[np.int16]] = []
-        heard_speech = False
         
+        hits = 0
+ 
         with sd.InputStream(samplerate=RATE, channels=1, dtype="int16", blocksize=CHUNK) as stream:
             while True:
                 scores = cast(dict[str, float], self.wake.predict(read_chunk(stream)))
                 top = max(scores.values())
-                
+ 
                 if self.debug and top > 0.1:
                     print(f"Wake score: {top:.3f}")
-                
-                if top > THRESHOLD:
+ 
+                hits = hits + 1 if top > THRESHOLD else 0
+                if hits >= HITS:
                     break
-            
-            print("Asmo > (listening...)", flush=True)
-            
-            silent = 0
+                
+    def record(self) -> str:
+        """Record until you stop talking, return the transcript."""
+        
+        print("Asmo > (listening...)", flush=True)
+        
+        frames: list[NDArray[np.int16]] = []
+        heard_speech = False
+        silent = 0
+        
+        with sd.InputStream(samplerate=RATE, channels=1, dtype="int16", blocksize=CHUNK) as stream:
             for _ in range(int(MAX_SECONDS * RATE / CHUNK)):
                 chunk = read_chunk(stream)
                 frames.append(chunk)
@@ -64,13 +72,11 @@ class Ears:
                     silent += 1
                     if silent >= SILENCE_CHUNKS:
                         break
-                    
+ 
         if not heard_speech:
             return ""
         
         audio: NDArray[np.float32] = np.concatenate(frames).astype(np.float32) / 32768.0
         segments, _ = self.whisper.transcribe(audio, language="en", vad_filter=True) # pyright: ignore[reportUnknownMemberType]
+        
         return " ".join(segment.text.strip() for segment in segments).strip()
-        
-                
-        

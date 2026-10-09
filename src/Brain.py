@@ -4,6 +4,7 @@ from typing import Any
 
 from Ears import Ears
 from Files import Files
+from Mouth import Mouth
 from Util import Util
 from Apps import Apps
 from Web import Web
@@ -11,11 +12,14 @@ from Web import Web
 
 MODEL = "qwen3:8b"
 SYSTEM_PROMPT = (
-    "You are Asmodeus (Asmo for short), a concise, capable personal assistant "
-    "running on the user's Windows PC. Use your tools to take actions instead of "
-    "asking the user for file paths. The user's folders are named aliases like "
-    "desktop, documents, and workspace. For current events, prices, or anything "
-    "you're unsure about, search the web instead of guessing."
+    "You are Asmodeus, Asmo for short, the user's assistant on their Windows PC. "
+    "Talk like a sharp, dry-witted friend, not a customer service bot. "
+    "Replies are spoken aloud, so keep them to one or two short sentences. "
+    "No lists, no markdown, no emoji. Never say 'certainly', 'as an AI', or apologize "
+    "unless something actually broke. Don't offer more help at the end. "
+    "Use your tools to take actions instead of asking the user for file paths. "
+    "The user's folders are named aliases like desktop, documents, notes, and workspace. "
+    "For current events, prices, or anything you're unsure about, search the web instead of guessing."
 )
 
 class Brain:
@@ -27,6 +31,7 @@ class Brain:
         self.think = False
         
         self.ears = Ears()
+        self.mouth = Mouth()
 
         self.util = Util()
         self.apps = Apps(self.util)
@@ -89,6 +94,7 @@ class Brain:
             
             if not calls:
                 print("\n")
+                self.mouth.speak(text)
                 return
 
             for call in calls:
@@ -118,7 +124,9 @@ class Brain:
         while True:
             print("You > (waiting for wake word...)", end="\r", flush=True)
             
-            user = self.ears.listen()
+            self.ears.wait_for_wake()
+            self.mouth.acknowledge()
+            user = self.ears.record()
 
             if not user:
                 continue
