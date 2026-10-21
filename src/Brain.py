@@ -1,3 +1,6 @@
+import queue
+import threading
+
 import ollama
 import re
 from typing import Any
@@ -11,6 +14,8 @@ from Web import Web
 
 
 MODEL = "qwen3:8b"
+GAMING_MODEL = "qwen3:4b"
+
 SYSTEM_PROMPT = (
     "You are Asmodeus, Asmo for short, the user's assistant on their Windows PC. "
     "Talk like a sharp, dry-witted friend, not a customer service bot. "
@@ -28,9 +33,14 @@ class Brain:
             "role": "system",
             "content": SYSTEM_PROMPT
         }]
-        self.think = False
         
-        self.ears = Ears()
+        self.think = False
+        self.gaming = False
+        
+        self.model = MODEL
+        self.keep_alive = "5m"
+        
+        self.ears = Ears(True)
         self.mouth = Mouth()
 
         self.util = Util()
@@ -43,17 +53,21 @@ class Brain:
             **self.files.tools, 
             **self.web.tools
             }
-
+        
+        self.inbox: queue.Queue[str] = queue.Queue()
+        self.idle = threading.Event()
+        self.idle.set()
 
     def turn(self):
         while True:
             stream = ollama.chat( # pyright: ignore[reportUnknownMemberType]
-                model=MODEL, 
+                model=self.model, 
                 messages=self.history, 
                 tools=list(self.tools.values()),
                 think=self.think, 
                 stream=True, 
-                options={"num_ctx": 8192}
+                options={"num_ctx": 8192},
+                keep_alive=self.keep_alive
             )
             
             text: str = ""
@@ -116,37 +130,83 @@ class Brain:
                     "tool_name": name, 
                     "content": str(result)
                 })
+                
+    def listen_loop(self):
+        while True:
+            self.idle.wait()
+            
+            if not self.ears.wait_for_wake(self.idle):
+                continue
+            
+            if not self.idle.is_set():
+                continue
+            
+            self.mouth.acknowledge()
+            user = self.ears.record()
+            
+            if user:
+                print(f"You > {user}")
+                self.inbox.put(user)
+                
+    def type_loop(self):
+        while True:
+            user = input("You > ").strip()
+            
+            if user:
+                self.inbox.put(user)
+                
+    def set_gaming(self, on: bool):
+        ollama.generate(model=self.model, keep_alive=0)
+        
+        self.gaming = on
+        self.model = GAMING_MODEL if on else MODEL
+        self.keep_alive = "30s" if on else "5m"
+        
+        reply = "Gaming mode is on" if on else "Gaming mode is off"
+        print(f"Asmo > {reply}\n")
+        self.mouth.speak(reply)
+                
+    def handle(self, user: str) -> bool:
+        command = re.sub(r"[^a-z ]", "", user.lower()).strip()
+        
+        if command in ("shut down", "goodbye", "exit", "quit"):
+            print("Asmo > Bye :<\n")
+            return False
+        
+        if command in ("gaming on", "gaming off") or user.lower() == "/gaming":
+            self.set_gaming(command == "gaming on" if command.startswith("gaming") else not self.gaming)
+            return True
+
+        if command in ("thinking on", "thinking off") or user.lower() == "/think":
+            self.think = command == "thinking on" if command.startswith("thinking") else not self.think
+            print(f"Asmo > I am {'' if self.think else 'not '}thinking\n")
+            return True
+        
+        self.history.append({
+            "role": "user", 
+            "content": user
+        })
+        
+        self.turn()
+        return True
                        
 
     def run(self):
-        print("Asmo > I am listening. Say 'hey asmodeus' or 'hey asmo' to wake me. Ctrl+C to quit.\n")
+        print("Asmo > I am listening. Say 'hey asmo' or 'hey asmodeus' to wake me, or just type. Ctrl+C to quit.\n")
+        
+        threading.Thread(target=self.listen_loop, daemon=True).start()
+        threading.Thread(target=self.type_loop, daemon=True).start()
         
         while True:
-            print("You > (waiting for wake word...)", end="\r", flush=True)
-            
-            self.ears.wait_for_wake()
-            self.mouth.acknowledge()
-            user = self.ears.record()
-
-            if not user:
-                continue
-            print(f"You > {user}")
-            
-            command = re.sub(r"[^a-z ]", "", user.lower()).strip()
-            
-            if command in ("shut down", "goodbye", "exit", "quit"):
-                print("Asmo > Bye :<\n")
-                break
-            
-            if command in ("thinking on", "thinking off"):
-                self.think = command == "thinking on"
-                print(f"Asmo > I am {'' if self.think else 'not '}thinking\n")
+            try:
+                user = self.inbox.get(timeout=0.5)
+            except queue.Empty:
                 continue
             
-            self.history.append({
-                "role": "user", 
-                "content": user
-            })
-
-            self.turn()
+            self.idle.clear()
+            try:
+                if not self.handle(user):
+                    break
+            finally:
+                self.idle.set()
 

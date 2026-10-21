@@ -26,6 +26,7 @@ class Mouth:
     
     def play(self, audio: NDArray[np.int16]):
         if audio.size:
+            audio = np.concatenate([audio, np.zeros(self.rate // 4, dtype=np.int16)])
             sd.play(audio, self.rate) # pyright: ignore[reportUnknownMemberType]
             sd.wait()
             

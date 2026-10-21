@@ -1,4 +1,5 @@
 from pathlib import Path
+from threading import Event
 from typing import Any, cast
 
 from faster_whisper import WhisperModel # pyright: ignore[reportMissingTypeStubs]
@@ -10,9 +11,9 @@ from openwakeword import utils # pyright: ignore[reportMissingTypeStubs]
 
 WAKE_MODEL = Path(__file__).parent / "models" / "hey_asmo.onnx"
 
-THRESHOLD = 0.35
+THRESHOLD = 0.08
 SILENCE_RMS = 500.0
-HITS = 2
+HITS = 1
 
 RATE = 16000
 CHUNK = 1280
@@ -32,15 +33,15 @@ class Ears:
         self.wake: Any = Model(wakeword_models=[str(WAKE_MODEL)], inference_framework="onnx")
         self.whisper = WhisperModel("small.en", device="cpu", compute_type="int8")
         
-    def wait_for_wake(self):
-        """Block until the wake word is heard."""
+    def wait_for_wake(self, idle: Event) -> bool:
+        """Block until the wake word is heard. Returns False if idle gets cleared first."""
  
         self.wake.reset()
         
         hits = 0
  
         with sd.InputStream(samplerate=RATE, channels=1, dtype="int16", blocksize=CHUNK) as stream:
-            while True:
+            while idle.is_set():
                 scores = cast(dict[str, float], self.wake.predict(read_chunk(stream)))
                 top = max(scores.values())
  
@@ -49,7 +50,9 @@ class Ears:
  
                 hits = hits + 1 if top > THRESHOLD else 0
                 if hits >= HITS:
-                    break
+                    return True
+                
+        return False
                 
     def record(self) -> str:
         """Record until you stop talking, return the transcript."""
